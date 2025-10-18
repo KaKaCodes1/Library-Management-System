@@ -1,26 +1,42 @@
 import mysql.connector
+from mysql.connector import Error
+import getpass
 
-mydb = mysql.connector.connect(
-    host = "localhost",
-    user = "root",
-    password = "SQL@123!",
-    database = "testdb"
-)
+def connect_to_db():
+    try:
+        host = input("Enter MySQL host (e.g., localhost): ")
+        user = input("Enter MySQL username: ")
+        password = getpass.getpass("Enter MySQL password: ")
+        database = input("Enter database name: ")
 
-mycursor = mydb.cursor()
+        mydb = mysql.connector.connect(
+            host = host,
+            user = user,
+            password = password,
+            database = database
+        )
+        if mydb.is_connected():
+            print("Successfully connected to the database!")
+            return mydb 
+    except mysql.connector.Error as e:
+        print(f"Error: {e}")
+        return None
+
+
 
 """Creating the table"""
-mycursor.execute("""
-CREATE TABLE IF NOT EXISTS Books(
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(255),
-    author VARCHAR(255),             
-    ISBN VARCHAR(255)             
-)
-""")
+def create_table(mycursor):
+    mycursor.execute("""
+    CREATE TABLE IF NOT EXISTS Books(
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(255),
+        author VARCHAR(255),             
+        ISBN VARCHAR(255)             
+    )
+    """)
 
 #Function to add books
-def insertBook():
+def insertBook(mycursor, mydb):
     sql = "INSERT INTO Books (title, author, ISBN) VALUES(%s, %s, %s)"
     book_title = input("Enter Book Title: ")
     book_author = input("Enter Book Author: ")
@@ -33,7 +49,7 @@ def insertBook():
     print(f"{book_title} by {book_author}, ISBN({book_isbn}) is added")
 
 #Function to Search for books
-def searchBook():
+def searchBook(mycursor):
     sql = "SELECT * FROM Books WHERE title = %s"
     search_title = input("Enter Book title for search: ")
     val = (search_title,) #value should be passed as a tuple
@@ -45,7 +61,7 @@ def searchBook():
         print(book)
 
 #Function to list all books in the library
-def allBooks():
+def allBooks(mycursor):
     sql = "SELECT * FROM Books"
     mycursor.execute(sql)
     myresult = mycursor.fetchall()
@@ -54,7 +70,7 @@ def allBooks():
         print(book)
 
 #Function to delete a book
-def deleteBook():
+def deleteBook(mycursor, mydb):
     delete_book = int(input("Enter Book's ID to delete: "))
     
     while True:
@@ -72,41 +88,49 @@ def deleteBook():
         else:
             print("Wrong Choice. Pick Y or N")
 
+mydb = connect_to_db()
 
+if mydb:
+    mycursor = mydb.cursor()
+    create_table(mycursor)
 
-while True:
-    print("Welcome to TestDB Library.")
-    print()
-    print("""
-        1. Add a book
-        2. Search for a book
-        3. List all books in the library
-        4. Delete a book
-        5. Exit
-    """)
+    while True:
+        print("Welcome to TestDB Library.")
+        print()
+        print("""
+            1. Add a book
+            2. Search for a book
+            3. List all books in the library
+            4. Delete a book
+            5. Exit
+        """)
 
-    choice = int(input("Pick the service you require(1-4): "))
-    match choice:
-        case 1:
-            insertBook()
-            print()
-        case 2:
-            searchBook()
-            print()
-        case 3:
-            allBooks()
-            print()
-        case 4:
-            deleteBook()
-            print()
-        case 5:
-            print("Bye Library User!")
-            mycursor.close()
-            mydb.close()
-            print("Database connection closed.")
-            break
-        case _:
-            print("Kindly select an option from 1 to 5")
+        try:
+            choice = int(input("Pick the service you require (1-5): "))
+        except ValueError:
+            print("Invalid input! Please enter a number between 1 and 5.\n")
+            continue #jumps back to the beginning
+        match choice:
+            case 1:
+                insertBook(mycursor,mydb)
+                print()
+            case 2:
+                searchBook(mycursor)
+                print()
+            case 3:
+                allBooks(mycursor)
+                print()
+            case 4:
+                deleteBook(mycursor, mydb)
+                print()
+            case 5:
+                print("Bye Library User!")
+                mycursor.close()
+                mydb.close()
+                print("Database connection closed.")
+                break
+            case _:
+                print("Kindly select an option from 1 to 5")
 
 
                 
